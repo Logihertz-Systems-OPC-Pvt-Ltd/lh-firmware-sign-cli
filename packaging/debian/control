@@ -1,0 +1,9 @@
+Package: lh-firmware-sign-cli
+Version: 0.1.0
+Section: utils
+Priority: optional
+Architecture: amd64
+Maintainer: Sameer Tawade <ops@logihertz.com>
+Homepage: https://www.logihertz.com
+Description: lh-fw-sign - Hybrid Dual-Algorithm Signature Verification Invariant
+ Zero-dependency Go PKCS#11 v3.0 HSM-compatible binary firmware signer implementing hybrid Ed25519 + RSA-PSS-SHA384 signatures, LHFWSIG1 anti-rollback trailers, X.509 code-signing chains, and RFC 3161 TSA tokens.
