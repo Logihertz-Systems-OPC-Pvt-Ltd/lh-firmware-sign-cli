@@ -1,0 +1,8 @@
+/bin/
+/dist/
+/lh-fw-sign
+*.tar.gz
+*.sig
+coverage.out
+*.tmp
+*.log

@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    name: Build & Test (Go 1.22)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Verify Code Formatting (gofmt)
+        run: |
+          test -z "$(gofmt -s -l .)"
+
+      - name: Static Analysis (go vet)
+        run: |
+          go vet ./...
+
+      - name: Execute Verification Suite with Race Detector
+        run: |
+          go test -v -race ./...
+
+      - name: Build Binary (lh-fw-sign)
+        run: |
+          mkdir -p bin
+          go build -v -o bin/lh-fw-sign ./cmd/lh-fw-sign
+
+      - name: Verify CLI Subcommands
+        run: |
+          ./bin/lh-fw-sign --version
+          ./bin/lh-fw-sign --help
+          ./bin/lh-fw-sign scan fixtures/hardened_fwsign_policy.json --format table
+          ./bin/lh-fw-sign scan fixtures/hardened_fwsign_policy.json --format json
+          ./bin/lh-fw-sign scan fixtures/hardened_fwsign_policy.json --format sarif
+          ./bin/lh-fw-sign inspect-hsm --simulate-pin-lockout
+          ./bin/lh-fw-sign verify --firmware fixtures/sample_bootloader.bin --receipt fixtures/sample_signed_receipt.json --min-svn 7 --hw-id tegra234-orin-industrial
+
+      - name: Verify Dynamic Sign and Trailer Extraction
+        run: |
+          ./bin/lh-fw-sign sign --firmware fixtures/sample_bootloader.bin --svn 10 --hw-id tegra234-orin --output /tmp/ci_receipt.json --attach-trailer
+          ./bin/lh-fw-sign verify --firmware fixtures/sample_bootloader.bin.signed --min-svn 10 --hw-id tegra234-orin
+          rm -f /tmp/ci_receipt.json fixtures/sample_bootloader.bin.signed
+
+      - name: Verify Vulnerable Posture Exit Code
+        run: |
+          set +e
+          ./bin/lh-fw-sign scan fixtures/vulnerable_fwsign_policy.json --format table
+          EXIT_CODE=$?
+          set -e
+          if [ $EXIT_CODE -ne 1 ]; then
+            echo "Expected exit code 1 for vulnerable policy, got $EXIT_CODE"
+            exit 1
+          fi
+          echo "Vulnerable policy correctly exited with code 1."
